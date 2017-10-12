@@ -1,4 +1,4 @@
-# redux-facets
+# redux-facet
 
 A pattern for tracking and channeling actions according to the container they were dispatched from.
 
@@ -73,7 +73,7 @@ You might be able to streamline it a bit. But what's unavoidably emerging here i
 
 So, we might give up and go back to duplicating reducer logic and actions across various parts of the app.
 
-Or, we could try to capture all that complexity into a reusable framework. That's `redux-facets`.
+Or, we could try to capture all that complexity into a reusable framework. That's `redux-facet`.
 
 ## The Solution
 
@@ -88,7 +88,7 @@ A Facet is analogous to a Redux Container, but it modifies incoming and outgoing
 ```javascript
 // facets/UsersList/index.js
 
-import facet from 'redux-facets';
+import facet from 'redux-facet';
 // actions can stay generic and reusable:
 import actions from '../../actions/pagination';
 // selectors must still be aligned to the facet
@@ -134,7 +134,7 @@ For the latter, repeatable reducers, we don't need to make any changes, we just 
 Now, we need to create the reducer that will handle the portion of the state tree for our Facet:
 
 ```javascript
-import { createReducer } from 'redux-facets';
+import { createReducer } from 'redux-facet';
 import { combineReducers } from 'redux-immutable';
 import { NAME } from '../facets/UsersList';
 // our 'common' pagination reducer
