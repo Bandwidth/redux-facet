@@ -1,8 +1,8 @@
 import { channel, takeEvery, buffers } from 'redux-saga';
 import { call, put, fork } from 'redux-saga/effects';
-import hasFacet from './actions/helpers/hasFacet';
-import withFacet from './actions/helpers/withFacet';
-import tagDirection from './actions/helpers/tagDirection';
+import hasFacet from './helpers/hasFacet';
+import withFacet from './helpers/withFacet';
+import tagDirection from './helpers/tagDirection';
 
 /**
  * Creates a two-way channel which emits actions related to the specified facet. `put` actions back to this channel

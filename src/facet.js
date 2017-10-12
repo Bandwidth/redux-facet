@@ -2,9 +2,9 @@ import _ from 'lodash';
 import { createStructuredSelector } from 'reselect';
 import { compose, withProps } from 'recompose';
 import { connect } from 'react-redux';
-import selectors from './selectors';
-import withFacet from './actions/helpers/withFacet';
-import facetActions from './actions/facets';
+import selectors from './facetSelectors';
+import withFacet from './helpers/withFacet';
+import facetActions from './facetActions';
 
 /**
  * Wraps a component with a connected Facet. A Facet represents a sub-view in the application,

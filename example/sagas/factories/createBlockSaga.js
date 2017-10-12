@@ -2,8 +2,7 @@
 // in a more simple saga used by only one facet, you could just create a saga directly.
 import { take, call, all, put, fork } from 'redux-saga/effects';
 import { delay } from 'redux-saga';
-import createFacetChannel from '../../../src/createFacetChannel';
-import facetActions from '../../../src/actions/facets';
+import { createChannel, actions as facetActions } from '../../../src';
 import colorActions from '../../actions/color';
 import tinycolor from 'tinycolor2';
 
@@ -15,7 +14,7 @@ const takeEvery = (channel, saga, ...args) => fork(function*() {
 });
 
 export default (facetName) => function*() {
-  const channel = yield* createFacetChannel(
+  const channel = yield* createChannel(
     facetName,
     colorActions.generateColor.pending.toString()
   );

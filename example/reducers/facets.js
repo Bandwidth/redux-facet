@@ -1,8 +1,8 @@
 import { combineReducers } from 'redux-immutable';
-import createFacetReducer from '../../src/createFacetReducer';
+import { createReducer } from '../../src';
 import colorReducer from './behaviors/color';
 
-export default createFacetReducer({
+export default createReducer({
   blockA: colorReducer(),
   blockB: colorReducer(),
   blockC: colorReducer(),

@@ -1,5 +1,5 @@
 import { createSelector } from 'reselect';
-import selectors from '../../src/selectors';
+import { selectors } from '../../src';
 
 export default {
   selectColor: (facetName) => createSelector(

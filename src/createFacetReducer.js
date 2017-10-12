@@ -2,7 +2,7 @@ import { handleActions } from 'redux-actions';
 import { fromJS } from 'immutable';
 import { combineReducers } from 'redux-immutable';
 import _ from 'lodash';
-import hasFacet from './actions/helpers/hasFacet';
+import hasFacet from './helpers/hasFacet';
 
 export const ALERTS_KEY = 'reduxFacetAlerts';
 

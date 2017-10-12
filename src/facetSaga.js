@@ -1,6 +1,6 @@
 import { call, put } from 'redux-saga/effects';
 import createFacetChannel from './createFacetChannel';
-import actions from './actions/facets';
+import actions from './facetActions';
 
 export default (facetName, pattern, saga) => function*() {
   const channel = yield call(createFacetChannel, facetName, pattern);
