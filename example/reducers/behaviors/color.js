@@ -2,13 +2,11 @@ import colorActions from '../../actions/color';
 import { handleActions } from 'redux-actions';
 import { fromJS } from 'immutable';
 
-const DEFAULT_STATE = fromJS({
-  color: '#ffffff',
-});
+const DEFAULT_STATE = '#ffffff';
 
-export default () => handleActions({
+export default handleActions({
   GENERATE_COLOR: {
-    COMPLETE: (state, { payload: { color } }) => state.set('color', color),
-    FAILED: (state) => state.set('color', 'red'),
+    COMPLETE: (state, { payload: { color } }) => color,
+    FAILED: () => 'red',
   },
 }, DEFAULT_STATE);

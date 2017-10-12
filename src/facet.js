@@ -2,9 +2,8 @@ import _ from 'lodash';
 import { createStructuredSelector } from 'reselect';
 import { compose, withProps } from 'recompose';
 import { connect } from 'react-redux';
-import selectors from './facetSelectors';
 import withFacet from './helpers/withFacet';
-import facetActions from './facetActions';
+import selectors from './facetSelectors';
 
 /**
  * Wraps a component with a connected Facet. A Facet represents a sub-view in the application,
@@ -23,39 +22,38 @@ export default (
   baseMapDispatchToProps,
   baseMergeProps,
   options = {},
-) => (WrappedComponent) => {
+) => {
+  // intercepts mapStateToProps and substitutes the facet state. This allows
+  // generalized selectors to work across facets without configuration.
+  // The global state is passed as a third property.
+  const mapStateToProps = (state, ownProps) => ({
+    ...baseMapStateToProps(
+      selectors.selectFacetState(facetName)(state),
+      ownProps,
+      state
+    ),
+    // facetName will also be supplied
+    facetName,
+  });
+
   // intercepts calls to dispatch, attaching metadata to outgoing actions
   // to indicate which facet they were sent from
   const mapDispatchToPropsInjectingFacetName = (dispatch, ownProps) => {
-    const shimmedDispatch = (action) => dispatch(withFacet(facetName)(action));
+    const facetDispatch = (action) => dispatch(withFacet(facetName)(action));
     return {
-      ...(baseMapDispatchToProps ? baseMapDispatchToProps(shimmedDispatch, ownProps) : {}),
-
-      // also adding some utility action creators
-      createAlert: ({ message, type, persistent }) =>
-        dispatch(facetActions.createAlert({ message, type, facetName, persistent })),
-      dismissAlert: (id) => dispatch(facetActions.dismissAlert(id, facetName)),
-      dismissAllAlerts: () => dispatch(facetActions.dismissFacetAlerts(facetName)),
+      ...(baseMapDispatchToProps ? baseMapDispatchToProps(facetDispatch, ownProps, dispatch) : {}),
+      facetDispatch,
     };
   };
 
-  return compose(
-    connect(
-      createStructuredSelector({
-        alerts: selectors.selectAlerts(facetName),
-      }),
-      mapDispatchToPropsInjectingFacetName,
-      null,
+  return connect(
+    mapStateToProps,
+    mapDispatchToPropsInjectingFacetName,
+    baseMergeProps,
+    // pass through connect options from HOC options
+    _.pick(
+      options,
+      ['pure', 'areStatesEqual', 'areOwnPropsEqual', 'areStatePropsEqual', 'areMergedPropsEqual', 'storeKey'],
     ),
-    connect(
-      baseMapStateToProps,
-      null,
-      baseMergeProps,
-      // pass through connect options from HOC options
-      _.pick(
-        options,
-        ['pure', 'areStatesEqual', 'areOwnPropsEqual', 'areStatePropsEqual', 'areMergedPropsEqual', 'storeKey'],
-      ),
-    ),
-  )(WrappedComponent);
+  );
 };

@@ -1,4 +1,5 @@
 import { combineReducers } from 'redux-immutable';
+
 /*
   Some webpack magic to collect all the files in this directory into a
   single reducer
@@ -18,4 +19,6 @@ const reducerMap = keys.reduce((collection, key) => ({
   [key.replace('./', '').replace('.js', '')]: ctx(key).default,
 }), {});
 
-export default combineReducers(reducerMap);
+export default combineReducers({
+  ...reducerMap,
+});
