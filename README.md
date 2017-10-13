@@ -8,17 +8,19 @@ The trouble with generalizing patterns in Redux, whether they be reducers, sagas
 
 ## The Problem
 
-You have a behavior for keeping track of pagination state which you want to replicate to various lists across your app. You create a reducer for handling pagination, `paginationReducer`, and actions for pagination events, `paginationActions`.
+You have a behavior for keeping track of pagination state which you want to replicate to various lists across your app. In order to do that right now, you have to have `usersListActions.setPage`, `postsListActions.setPage`, etc, etc, as well as duplicated logic in reducers. You decide to create a generic set of actions for pagination events, `paginationActions`, and a generic reducer for handling pagination, `paginationReducer`.
 
 Now you supply those actions to your list containers, `UsersList` and `PostsList`, and you mount that reducer in the state for both collections, at `users.pagination` and `posts.pagination`.
 
 ```javascript
-// UsersList/index.js
-import { connect } from 'react-redux';
-import View from './View';
-import paginationActions from '../../actions/pagination';
-// etc...
+// reducers/usersList.js, reducers/postsList.js
+export default combineReducers({
+  pagination: paginationReducer,
+  foo: fooReducer,
+  /* ... etc ... */
+});
 
+// containers/UsersList/index.js, containers/PostsList/index.js
 const mapStateToProps = (state) => ({ /* ... */ });
 
 const mapDispatchToProps = (dispatch) => ({
@@ -30,6 +32,25 @@ export default connect(mapStateToProps, mapDispatchToProps)(View);
 ```
 
 When you run the app and go to page 2 of Users, it goes to page 2 of Posts as well. Your actions have no way of indicating which list they came from, and even if they did, both of your reducers will trigger off any particular pagination action anyway.
+
+```
+Incoming Action     | State Diff
+--------------------|---------------------------
+{                   |   {
+  type: 'SET_PAGE', |     usersList: {
+  payload: {        |       pagination: {
+    page: 3         | -       page: 0
+  }                 | +       page: 3
+}                   |       }
+                    |     },
+                    |     postsList: {
+                    |       pagination: {
+                    | -       page: 6
+                    | +       page: 3
+                    |       }
+                    |     }
+                    |   }
+```
 
 How can we solve this? We could add a tag in the `meta` properties of each action which indicates whether the action came from `UsersList` or `PostsList`. That's simple enough, just add a parameter to the action creators. But it is kind of tedious and smelly to provide a magic string every time you create an action.
 
@@ -55,7 +76,7 @@ const createFilteredPaginationReducer =
   }
 ```
 
-That will work, though it's a bit clunky to use:
+That will work pretty smoothly:
 
 ```javascript
 const baseUserReducer = (state, action) => {
@@ -69,15 +90,15 @@ const userReducer = (state, action) => ({
 });
 ```
 
-You might be able to streamline it a bit. But what's unavoidably emerging here is the complexity of having to tag and filter everything which used to be very straightforward. And we haven't even covered selectors yet, or sagas. Imagine if you had to write logic in all your sagas to make sure that the tag on an incoming action was replicated to all resulting actions!
+You might even be able to streamline it a bit. But what's unavoidably emerging here is the complexity of having to tag and filter everything which used to be very straightforward. At this point you're committing to coding by convention, with every developer understanding the requirements of tagging and filtering actions. And we haven't even covered selectors yet, or sagas. Imagine if you had to write logic in all your sagas to make sure that the tag on an incoming action was replicated to all resulting actions! I did it-- it wasn't fun or maintainable.
 
 So, we might give up and go back to duplicating reducer logic and actions across various parts of the app.
 
-Or, we could try to capture all that complexity into a reusable framework. That's `redux-facet`.
+Or, we could try to capture all that complexity into a reusable library. That's `redux-facet`.
 
 ## The Solution
 
-The idea behind `redux-facet` is to improve the ability of a Redux developer (you?) to extract common patterns in their application logic into easily reusable patterns without getting lost in the weeds of sorting out what actions and state are associated with what parts of the application. Why can't our code do that for us automatically?
+The idea behind `redux-facet` is to improve the ability of a Redux developer (you?) to extract common patterns in their application logic into easily reusable patterns without getting lost in the weeds of sorting out what actions and state are associated with what parts of the application. Why can't our code do that for us?
 
 As an app increases in scope, it's likely you'll find yourself writing the same actions, reducers, and sagas again for different resources or datasets. If you get an itch to extract those repeated patterns into reusable code, but can't quite figure out how to keep things straight, perhaps Facets are the solution.
 
@@ -85,7 +106,7 @@ Let's look at the new code:
 
 ### Containers (now Facets)
 
-A Facet is analogous to a Redux Container, but it modifies incoming and outgoing data to reflect the Facet they're associated with. Ougoing actions are tagged automatically, and incoming state is sliced down to just the section the Facet controls (don't worry, you can still access unfiltered dispatching and global state if you need it).
+A Facet is analogous to a Redux Container, but it modifies incoming and outgoing data to reflect the Facet they're associated with. Ougoing actions are tagged automatically, and incoming state is sliced down to just the section the Facet controls (don't worry, you can still access unfiltered dispatching and global state if you need them).
 
 ```javascript
 // facets/UsersList/index.js
@@ -136,14 +157,14 @@ For the latter, repeatable reducers, we don't need to make any changes, we just 
 Now, we need to create the reducer that will handle the portion of the state tree for our Facet:
 
 ```javascript
-import { createReducer } from 'redux-facet';
+import { facetReducer } from 'redux-facet';
 import { combineReducers } from 'redux-immutable';
 import { NAME } from '../facets/UsersList';
 // our 'common' pagination reducer
 import pagination from './behaviors/pagination';
 
-// the createReducer function filters incoming actions by facet name
-export default createReducer(NAME, combineReducers({
+// the facetReducer function filters incoming actions by facet name
+export default facetReducer(NAME, combineReducers({
   // simply mount our common reducer into our facet reducer
   pagination,
   // we can, of course, include other custom behaviors or whatever
@@ -152,15 +173,15 @@ export default createReducer(NAME, combineReducers({
 }));
 ```
 
-`createReducer` filters all incoming actions by the Facet name. That means your reducer function won't receive any actions that weren't dispatched from your Facet (or manually tagged as if they were).
+`facetReducer` filters all incoming actions by the Facet name. That means your reducer function won't receive any actions that weren't dispatched from your Facet (or manually tagged as if they were).
 
-That may seem limiting, but the limitation can also help organize your store and keep boundaries specific. If it's a problem, you can always skip `createReducer` and write your own reducer that checks for a Facet name only when you want it to. You can also selectively apply `createReducer` to sub-reducers, like so:
+That may seem limiting, but the limitation can also help organize your store and keep boundaries specific. If it's a problem, you can always skip `facetReducer` and write your own reducer that checks for a Facet name only when you want it to. You can also selectively apply `facetReducer` to sub-reducers, like so:
 
 ```javascript
 export default combineReducers({
-  // using createReducer here ensures our pagination is filtered to
+  // using facetReducer here ensures our pagination is filtered to
   // our facet only, so it won't pick up pagination actions from other facets
-  createReducer(NAME, pagination),
+  facetReducer(NAME, pagination),
   // ... but the other reducers will still all get every single action that
   // redux dispatches.
   handlesGlobalActions: someOtherReducer,
@@ -182,7 +203,7 @@ Now, the only difference with your wrapped saga is that you must `take` from and
 ```javascript
 import { take, call, all, put, fork } from 'redux-saga/effects';
 import { delay, takeEvery } from 'redux-saga';
-import { createSaga } from 'redux-facet';
+import { facetSaga } from 'redux-facet';
 import { NAME } from '../facets/UsersList';
 // in this hypothetical case, perhaps 'list' itself
 // is able to be generalized so that its actions can be used
@@ -190,14 +211,14 @@ import { NAME } from '../facets/UsersList';
 import actions from '../actions/list';
 import apiClient from '../myApiClient';
 
-export default createSaga(
+export default facetSaga(
   NAME, // the name of your facet
   'LIST_PENDING', // any redux-saga pattern for selecting actions to listen for
 
   // your saga
   function*(channel) {
     // the channel is set up to filter for only actions which relate
-    // to the saga, and match the pattern you provided.
+    // to the saga, and match the pattern you provided (which can be '*')
 
     // creating a handler for incoming actions
     function* handleListPending(action) {
@@ -207,7 +228,10 @@ export default createSaga(
     }
 
     // use take, takeLatest, takeEvery like normal, but supply
-    // the channel as the first argument
+    // the channel as the first argument.
+    // unfortunately, redux-saga's take effects don't support
+    // supplying a channel and a pattern at the same time, hence
+    // the presence of the pattern as the second parameter of facetSaga
     yield takeEvery(channel, handleListPending);
   },
 );
