@@ -1,11 +1,9 @@
-import createFacetChannel from './createFacetChannel';
-import createFacetReducer from './createFacetReducer';
-import facet from './facet';
-import facetSelectors from './facetSelectors';
-import createFacetSaga from './facetSaga';
+export { default as createChannel } from './createFacetChannel';
+export { default as createReducer } from './createFacetReducer';
+export { default as selectors } from './facetSelectors';
+export { default as createSaga } from './facetSaga';
+export { default as getFacet } from './helpers/getFacet';
+export { default as hasFacet } from './helpers/hasFacet';
+export { default as withFacet } from './helpers/withFacet';
 
-export default facet;
-export const createChannel = createFacetChannel;
-export const createReducer = createFacetReducer;
-export const selectors = facetSelectors;
-export const createSaga = createFacetSaga;
+export { default } from './facet';
