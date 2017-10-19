@@ -97,6 +97,10 @@ ReactDom.render(
 
 In the example above, both the `users` and `posts` facets of the application can reuse the same action creators, reducers, and components to manage their alert systems, but the alerts they create will never cross the boundaries between them. `redux-facet` ensures the actions reach the correct reducer, and the state is separated out before reaching the container.
 
+## Immutable.js Support
+
+To use `redux-facet` with `immutable`, import all modules from `@bandwidth/redux-facet/immutable`. Module names and usages stay the same.
+
 ## Documentation
 
 ### `facet(facetName: String, baseMapStateToProps: Function, baseMapDispatchToProps: Function, baseMergeProps: Function, options: Object)`
@@ -253,6 +257,10 @@ The `'LIST_USERS_REQUEST'` pattern further narrows the collection of actions thi
 Finally, a saga is supplied which will receive the `channel` as a parameter. `channel` has been configured to emit actions which match the filter parameters, and calling `put` with `channel` will automatically tag outgoing actions with the facet name.
 
 Note that the saga in this example is generalizeable. Since the outgoing action will be tagged with the facet name, it will also be processed exclusively by the reducer associated with that facet, and therefore the results of the operation will only be stored in the state associated with the facet.
+
+### `selectors`
+
+`redux-facet` exports a selector to select facet state from the store by name. You can access it by calling `selectors.selectFacetState(facetName)`. Calling the returned function with your store will return the state of that facet.
 
 ### `getFacet(action: Object)`
 
