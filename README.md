@@ -9,7 +9,7 @@ In Redux, all actions share the same channel. Creating reusable action creators 
 ```javascript
 import facet, {
   combineFacetReducers
-} from 'redux-facet';
+} from '@bandwidth/redux-facet';
 import { createStore, combineReducers } from 'redux';
 import { Provider } from 'react-redux';
 import React from 'react';
