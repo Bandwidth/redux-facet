@@ -3,6 +3,20 @@
   "version": "0.1.0",
   "description": "",
   "main": "./dist/index.js",
+  "files": [
+    "README.md",
+    "dist",
+    "immutable.js"
+  ],
+  "npmName": "@bandwidth/redux-facet",
+  "npmFileMap": [
+    {
+      "basePath": "/dist/",
+      "files": [
+        "*.js"
+      ]
+    }
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "example": "node ./example/webpack.devserver.js",
