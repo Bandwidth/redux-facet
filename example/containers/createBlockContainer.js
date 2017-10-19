@@ -1,7 +1,7 @@
 // factory function for generating new block containers.
 // in a simpler case, you'd just create the containers as normal.
 import { createStructuredSelector } from 'reselect';
-import facet from '../../src';
+import facet from '../../src/immutable';
 import colorActions from '../actions/color';
 import colorSelectors from '../selectors/color';
 import ColorBlock from '../components/ColorBlock';

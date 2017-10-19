@@ -2,7 +2,7 @@
 // in a more simple saga used by only one facet, you could just create a saga directly.
 import { take, call, all, put, fork } from 'redux-saga/effects';
 import { delay, takeEvery } from 'redux-saga';
-import { facetSaga } from '../../../src';
+import { facetSaga } from '../../../src/immutable';
 import colorActions from '../../actions/color';
 import tinycolor from 'tinycolor2';
 

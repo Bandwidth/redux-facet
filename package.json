@@ -1,11 +1,13 @@
 {
   "name": "redux-facet",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "",
-  "main": "index.js",
+  "main": "./dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "example": "node ./example/webpack.devserver.js"
+    "example": "node ./example/webpack.devserver.js",
+    "build": "babel src --out-dir dist",
+    "prepublish": "npm run build"
   },
   "author": "",
   "license": "ISC",
@@ -14,12 +16,11 @@
     "lodash": "^4.17.4",
     "react-redux": "^5.0.6",
     "redux": "^3.7.2",
-    "redux-actions": "^2.2.1",
     "redux-immutable": "^4.0.0",
-    "redux-saga": "^0.15.6",
-    "reselect": "^3.0.1"
+    "redux-saga": "^0.15.6"
   },
   "devDependencies": {
+    "babel-cli": "^6.26.0",
     "babel-core": "^6.26.0",
     "babel-loader": "^7.1.2",
     "babel-preset-es2017": "^6.24.1",
@@ -31,6 +32,8 @@
     "prop-types": "^15.6.0",
     "react": "^16.0.0",
     "react-dom": "^16.0.0",
+    "redux-actions": "^2.2.1",
+    "reselect": "^3.0.1",
     "style-loader": "^0.19.0",
     "webpack": "^3.7.1",
     "webpack-dev-server": "^2.9.1"

@@ -1,9 +1,6 @@
 import _ from 'lodash';
-import { createStructuredSelector } from 'reselect';
-import { compose, withProps } from 'recompose';
-import { connect } from 'react-redux';
-import withFacet from './helpers/withFacet';
-import selectors from './facetSelectors';
+import withFacet from '../helpers/withFacet';
+import { connect as defaultConnect } from 'react-redux';
 
 /**
  * Wraps a component with a connected Facet. A Facet represents a sub-view in the application,
@@ -16,12 +13,14 @@ import selectors from './facetSelectors';
  * Note: alerts will not automatically be rendered into your component. You must reference the
  * provided `alerts` prop and choose a logical place to render them yourself.
  */
-export default (
+export default (selectors) => (
   facetName,
   baseMapStateToProps,
   baseMapDispatchToProps,
   baseMergeProps,
-  options = {},
+  options = {
+    connect: defaultConnect,
+  },
 ) => {
   // intercepts mapStateToProps and substitutes the facet state. This allows
   // generalized selectors to work across facets without configuration.
@@ -46,7 +45,7 @@ export default (
     };
   };
 
-  return connect(
+  return options.connect(
     mapStateToProps,
     mapDispatchToPropsInjectingFacetName,
     baseMergeProps,

@@ -1,252 +1,267 @@
 # redux-facet
 
-A pattern for tracking and channeling actions according to the container they were dispatched from.
+## Purpose
 
-As you build out a Redux application, you may find yourself repeating common patterns for various parts of your app. You may find yourself faced with a question of whether you can generalize those patterns into reusable pieces. You may find yourself behind the wheel of a large automobile. I digress...
+In Redux, all actions share the same channel. Creating reusable action creators and reducer behaviors is hard, because you need a method with which to associate different results of those actions with different parts of the application. Without a plan to address this, actions and reducers are often duplicated: `createGlobalAlert`, `createUsersAlert`, `createPostsAlert`, etc...
 
-The trouble with generalizing patterns in Redux, whether they be reducers, sagas or both, is that you will still need to create distinct actions for each container which utilizes the pattern, and your reducers still need to differentiate between those actions to know when to run. Consider:
-
-## The Problem
-
-You have a behavior for keeping track of pagination state which you want to replicate to various lists across your app. In order to do that right now, you have to have `usersListActions.setPage`, `postsListActions.setPage`, etc, etc, as well as duplicated logic in reducers. You decide to create a generic set of actions for pagination events, `paginationActions`, and a generic reducer for handling pagination, `paginationReducer`.
-
-Now you supply those actions to your list containers, `UsersList` and `PostsList`, and you mount that reducer in the state for both collections, at `users.pagination` and `posts.pagination`.
+`redux-facet` aims to build a pattern which makes it easy to write one set of actions and one reducer, then reuse that behavior in various 'facets' of your application.
 
 ```javascript
-// reducers/usersList.js, reducers/postsList.js
-export default combineReducers({
-  pagination: paginationReducer,
-  foo: fooReducer,
-  /* ... etc ... */
+import facet, {
+  combineFacetReducers
+} from 'redux-facet';
+import { createStore, combineReducers } from 'redux';
+import { Provider } from 'react-redux';
+import React from 'react';
+import ReactDom from 'react-dom';
+
+import userListReducer from 'reducers/userList';
+import alertsReducer from 'reducers/common/alerts';
+import alertsActions from 'actions/common/alerts';
+
+/**
+ * Creating the root reducer
+ */
+const reducer = combineFacetReducers({
+  users: combineReducers({
+    alerts: alertsReducer,
+    list: userListReducer,
+  }),
+  posts: combineReducers({
+    alerts: alertsReducer,
+  }),
+  /* ... */
 });
 
-// containers/UsersList/index.js, containers/PostsList/index.js
-const mapStateToProps = (state) => ({ /* ... */ });
+/**
+ * Creating the store, as usual
+ */
+const store = createStore(reducer, {});
 
-const mapDispatchToProps = (dispatch) => ({
-  setPage: (page) => dispatch(paginationActions.setPage(page)),
-  // ...
-});
+/**
+ * Creating views for the data
+ */
+const AlertsView = ({ alerts }) => (
+  <div>
+    {alerts.map(alert => <div>{alert}</div>)}
+  </div>
+);
+const UsersView = ({ users, alerts, createAlert }) => (
+  <div>
+    <AlertsView alerts={alerts} />
+    <ul>
+      {
+        users.map(
+          user => (
+            <li onClick={() => createAlert(`Clicked ${user.name}`)}>{user.name}</li>
+          )
+        )
+      }
+    </ul>
+  </div>
+);
+const PostsView = ({ alerts, createAlert }) => (
+  <div>
+    <AlertsView alerts={alerts} />
+    <div>No alerts from users will show up here</div>
+  </div>
+);
 
-export default connect(mapStateToProps, mapDispatchToProps)(View);
-```
+/**
+ * Using named facet containers instead of default react-redux containers
+ */
+const UsersContainer = facet(
+  'users',
+  (state) => ({ users: state.list, alerts: state.alerts }),
+  (dispatch) => ({ createAlert: (message) => dispatch(alertsActions.create(message)) }),
+)(UsersView);
 
-When you run the app and go to page 2 of Users, it goes to page 2 of Posts as well. Your actions have no way of indicating which list they came from, and even if they did, both of your reducers will trigger off any particular pagination action anyway.
+const PostsContainer = facet(
+  'posts',
+  (state) => ({ alerts: state.alerts }),
+  (dispatch) => ({ createAlert: (message) => dispatch(alertsActions.create(message)) }),
+)(PostsView);
 
-```
-Incoming Action     | State Diff
---------------------|---------------------------
-{                   |   {
-  type: 'SET_PAGE', |     usersList: {
-  payload: {        |       pagination: {
-    page: 3         | -       page: 0
-  }                 | +       page: 3
-}                   |       }
-                    |     },
-                    |     postsList: {
-                    |       pagination: {
-                    | -       page: 6
-                    | +       page: 3
-                    |       }
-                    |     }
-                    |   }
-```
-
-How can we solve this? We could add a tag in the `meta` properties of each action which indicates whether the action came from `UsersList` or `PostsList`. That's simple enough, just add a parameter to the action creators. But it is kind of tedious and smelly to provide a magic string every time you create an action.
-
-```javascript
-const createSetPageAction = ({ page, origin }) => ({
-  type: 'SET_PAGE',
-  payload: { page },
-  meta: { origin },
-});
-```
-
-Then there's the matter of the reducers. Each one will have to filter for actions which came from the right collection. We could turn our reducer into a reducer factory, and only trigger it when the origin matches what we expect:
-
-```javascript
-const createFilteredPaginationReducer =
-  (originName) =>
-  (state, action) => {
-    if (action.meta.origin = originName) {
-      return paginationReducer(state, action);
-    } else {
-      return state;
-    }
-  }
-```
-
-That will work pretty smoothly:
-
-```javascript
-const baseUserReducer = (state, action) => {
-  /* unique logic for users */
-};
-const userPaginationReducer =
-  createFilteredPaginationReducer('users');
-const userReducer = (state, action) => ({
-  ...baseUserReducer(state, action),
-  pagination: userPaginationReducer(state, action),
-});
-```
-
-You might even be able to streamline it a bit. But what's unavoidably emerging here is the complexity of having to tag and filter everything which used to be very straightforward. At this point you're committing to coding by convention, with every developer understanding the requirements of tagging and filtering actions. And we haven't even covered selectors yet, or sagas. Imagine if you had to write logic in all your sagas to make sure that the tag on an incoming action was replicated to all resulting actions! I did it-- it wasn't fun or maintainable.
-
-So, we might give up and go back to duplicating reducer logic and actions across various parts of the app.
-
-Or, we could try to capture all that complexity into a reusable library. That's `redux-facet`.
-
-## The Solution
-
-The idea behind `redux-facet` is to improve the ability of a Redux developer (you?) to extract common patterns in their application logic into easily reusable patterns without getting lost in the weeds of sorting out what actions and state are associated with what parts of the application. Why can't our code do that for us?
-
-As an app increases in scope, it's likely you'll find yourself writing the same actions, reducers, and sagas again for different resources or datasets. If you get an itch to extract those repeated patterns into reusable code, but can't quite figure out how to keep things straight, perhaps Facets are the solution.
-
-Let's look at the new code:
-
-### Containers (now Facets)
-
-A Facet is analogous to a Redux Container, but it modifies incoming and outgoing data to reflect the Facet they're associated with. Ougoing actions are tagged automatically, and incoming state is sliced down to just the section the Facet controls (don't worry, you can still access unfiltered dispatching and global state if you need them).
-
-```javascript
-// facets/UsersList/index.js
-
-import facet from 'redux-facet';
-// actions can stay generic and reusable:
-import actions from '../../actions/pagination';
-// selectors must still be aligned to the facet
-import selectors from '../../selectors/pagination';
-// typical view component for the container
-import View from './View';
-
-export const NAME = 'usersList';
-
-// mapStateToProps is supplied with the facet-specific state view.
-// the global state is supplied as a third parameter
-const mapStateToProps = (facetState, ownProps, globalState) => ({
-  pageNumber: selectors.selectPageNumber(facetState),
-  /* ... etc ... */
-});
-
-// mapDispatchToProps is supplied with a facet-specific dispatch function
-// the default dispatch is supplied as a third parameter
-const mapDispatchToProps = (facetDispatch, ownProps, globalDispatch) => ({
-  setPage: (page) => facetDispatch(actions.setPage(page)),
-});
-
-// facet works just like connect
-export default facet(
-  NAME,
-  mapStateToProps,
-  mapDispatchToProps,
-)(View);
-```
-
-That covers the Container. As you can see, the only things we really changed were using `facet` instead of `connect`, and modifying our `mapStateToProps` and `mapDispatchToProps` to understand that the parameters supplied are relative to our Facet.
-
-### Action Creators
-
-We don't need to make any modifications to our action creators. Actions will be tagged automatically by the Facet when they're dispatched.
-
-### Reducers
-
-Using Facets, it starts to make sense to make a distinction between typical one-off reducers, and reducers which maintain a portion of state that is repeatable across various parts of the tree (i.e., our pagination example).
-
-For the latter, repeatable reducers, we don't need to make any changes, we just have to mount them in various other reducers across our app.
-
-Now, we need to create the reducer that will handle the portion of the state tree for our Facet:
-
-```javascript
-import { facetReducer } from 'redux-facet';
-import { combineReducers } from 'redux-immutable';
-import { NAME } from '../facets/UsersList';
-// our 'common' pagination reducer
-import pagination from './behaviors/pagination';
-
-// the facetReducer function filters incoming actions by facet name
-export default facetReducer(NAME, combineReducers({
-  // simply mount our common reducer into our facet reducer
-  pagination,
-  // we can, of course, include other custom behaviors or whatever
-  // else we want in this reducer.
-  someCustomStuff: someOtherReducer,
-}));
-```
-
-`facetReducer` filters all incoming actions by the Facet name. That means your reducer function won't receive any actions that weren't dispatched from your Facet (or manually tagged as if they were).
-
-That may seem limiting, but the limitation can also help organize your store and keep boundaries specific. If it's a problem, you can always skip `facetReducer` and write your own reducer that checks for a Facet name only when you want it to. You can also selectively apply `facetReducer` to sub-reducers, like so:
-
-```javascript
-export default combineReducers({
-  // using facetReducer here ensures our pagination is filtered to
-  // our facet only, so it won't pick up pagination actions from other facets
-  facetReducer(NAME, pagination),
-  // ... but the other reducers will still all get every single action that
-  // redux dispatches.
-  handlesGlobalActions: someOtherReducer,
-});
-```
-
-### Selectors
-
-We don't need to do anything special to the selectors, either. Since our `mapStateToProps` within our Facet will automatically select our Facet's portion of the state tree, we can write our selectors that will work in any Facet. If you need access to the global state in your selector, you can find it passed as the third parameter in `mapStateToProps`.
-
-### Sagas
-
-Previously I mentioned that sagas can be really annoying with the ad-hoc pattern. The problem is, you need to ensure that meta tags are propagated from initiating actions to all other actions which are created by the saga, or it becomes impossible to track multi-action operations as they unfold.
-
-With `redux-facet`, you can wrap your sagas with a function that provides a channel. If you're not familiar with channels in redux-saga, you can think of them as event sources which a saga can `take` from and `put` to, just like the Redux action stream.
-
-Now, the only difference with your wrapped saga is that you must `take` from and `put` to the provided channel. You don't need to be concerned with Facets beyond that; the channel itself will filter for actions related to your Facet, and attach Facet meta tags to all outgoing actions.
-
-```javascript
-import { take, call, all, put, fork } from 'redux-saga/effects';
-import { delay, takeEvery } from 'redux-saga';
-import { facetSaga } from 'redux-facet';
-import { NAME } from '../facets/UsersList';
-// in this hypothetical case, perhaps 'list' itself
-// is able to be generalized so that its actions can be used
-// between all sorts of collections
-import actions from '../actions/list';
-import apiClient from '../myApiClient';
-
-export default facetSaga(
-  NAME, // the name of your facet
-  'LIST_PENDING', // any redux-saga pattern for selecting actions to listen for
-
-  // your saga
-  function*(channel) {
-    // the channel is set up to filter for only actions which relate
-    // to the saga, and match the pattern you provided (which can be '*')
-
-    // creating a handler for incoming actions
-    function* handleListPending(action) {
-      const response = yield call(apiClient, action.payload.listOptions);
-      // put to the channel to dispatch actions
-      yield put(channel, actions.listComplete(response));
-    }
-
-    // use take, takeLatest, takeEvery like normal, but supply
-    // the channel as the first argument.
-    // unfortunately, redux-saga's take effects don't support
-    // supplying a channel and a pattern at the same time, hence
-    // the presence of the pattern as the second parameter of facetSaga
-    yield takeEvery(channel, handleListPending);
-  },
+/**
+ * Rendering everything
+ */
+ReactDom.render(
+  <Provider store={store}>
+    <div>
+      <UsersContainer />
+      <PostsContainer />
+    </div>
+  </Provider>
 );
 ```
 
-## Example
+In the example above, both the `users` and `posts` facets of the application can reuse the same action creators, reducers, and components to manage their alert systems, but the alerts they create will never cross the boundaries between them. `redux-facet` ensures the actions reach the correct reducer, and the state is separated out before reaching the container.
 
-If you're having trouble seeing the big picture here and would rather see a working sample, take a look at the `example` folder. Inside is a simple little Redux app with four big colored blocks. If you click one, its color will change after a bit. It demonstrates a very trivial example of what facets enable.
+## Documentation
 
-The actions to request new colors, the reducer to construct color state, and the saga to perform the generation are all generalized and reusable. They don't 'belong' to any particular color block.
+### `facet(facetName: String, baseMapStateToProps: Function, baseMapDispatchToProps: Function, baseMergeProps: Function, options: Object)`
 
-The blocks all dispatch the same types of actions, but each one is tagged so that it corresponds to its source block, so the requests to change colors never get crossed.
+Think of `facet()` kind of like `connect()`. It's a wrapper around `connect` which ensures two things:
 
-This example is probably somewhat poor because all the blocks look and behave similarly. In reality, they are all distinct containers. I'll see if I can make a better example soon.
+1. All actions dispatched by the wrapped component will be tracked with your facet name.
+2. The state used to create props will be, by default, only the subsection of the state associated with your facet.
 
-## Further Steps
+For an action creator,
 
-Of course, once you generalize a behavior, you could export it as a reusable library across various projects. I've been doing some experiments in that regard. The first is `redux-facet-alerts` (TODO: link there when it's public). Perhaps the pagination example in this README could also be turned into a generalized behavior.
+```javascript
+const getUser = (id) => ({
+  type: 'GET_USER',
+  payload: { id },
+});
+```
+
+and a given Redux state,
+
+```javascript
+{
+  users: {
+    userId1: { name: 'Bob' },
+    userId2: { name: 'Alice' },
+  },
+  posts: {
+    postId1: { content: 'Hello world' },
+  },
+}
+```
+
+using `facet` as follows
+
+```javascript
+facet(
+  'usersList',
+  (state) => { users: state },
+  (dispatch) => { getUser: (id) => dispatch(getUser(id)) },
+)(Component);
+```
+
+will pass the following props to the wrapped component:
+
+```javascript
+{
+  users: {
+    userId1: { name: 'Bob' },
+    userId2: { name: 'Alice' },
+  },
+  getUser: [Function],
+}
+```
+
+And when component calls `getUser(id)`, the resulting action will look like this:
+
+```javascript
+{
+  type: 'GET_USER',
+  payload: { id },
+  meta: { facetName: 'usersList' },
+}
+```
+
+That's all the unique functionality of `facet()`; the rest is handled by an internal call to `connect` from `react-redux`. If you want to provide options to `connect`, you can pass them in the fourth parameter. Likewise, `mergeProps` is available as the third parameter.
+
+Though simple, `facet()` allows action creators to be written once and reused anywhere without creating ambiguity of which portion of the app generated the action. When coupled with `facetReducer`, this allows actions to be tracked and associated with specific sections of the Redux state.
+
+### facetReducer(facetName: String, reducer: Function)
+
+> Note: for basic usage, be sure to also see `combineFacetReducers` below.
+
+Wrap a reducer in `facetReducer` to restrict it to use only actions which were dispatched from the corresponding facet.
+
+Now that only outgoing actions that are tagged with `facet()` will be processed by this reducer, you are free to extract and reuse the business logic of the reducer funciton itself.
+
+```javascript
+// a general reducer that can add and clear alert ids. In this scenario,
+// let's suppose that these ids are referencing a normalized collection
+// of alerts mounted in our global state.
+const alertReducer = (state, action) => {
+  switch (action.type) {
+    case 'ADD_ALERT':
+      return [
+        ...state,
+        action.payload.alert.id,
+      ];
+    case 'DISMISS_ALERTS':
+      return [];
+  }
+};
+
+// now the reducer can be reused for various different parts of the app
+const rootReducer = combineReducers({
+  users: facetReducer('users', combineReducers({
+    alerts: alertReducer,
+  })),
+  posts: facetReducer('posts', combineReducers({
+    posts: alertReducer,
+  })),
+});
+```
+
+Unlike if `alertReducer` had been simply mounted as-is, the `posts` will only process `"ADD_ALERT"` events which are related to the `posts` facet. Same with `users`.
+
+#### One Rule: Mount a facet reducer by its name
+
+Presently, `redux-facet` expects a reducer which controls the state of a facet to be mounted at the facet's name. For instance, in the `rootReducer` above, `users` and `posts` are mounted correctly. `combineFacetReducers` was designed to make this more idiomatic.
+
+### combineFacetReducers(reducerMap: Object)
+
+`combineFacetReducers` is the analogue of `combineReducers`. It has the same usage as the default Redux tool. Simply supply it with a map of reducers, where the key for each reducer is the name of the reducer's facet. `combineFacetReducers` will automatically apply `facetReducer` to your reducers utilizing the key and combine them into one function.
+
+```javascript
+const rootReducer = combineFacetReducers({
+  users: userReducer,
+  posts: postReducer,
+});
+```
+
+### facetSaga(facetName: String, pattern: String|Function, saga: Function)
+
+For those who use `redux-saga`, this library also provides a wrapper for sagas which will filter `take` and `put` effects to only draw from actions tagged with the supplied facet name. The API for `facetSaga` is a bit more advanced than `facetReducer`.
+
+The second parameter, `pattern`, is passed on to `redux-saga`'s `take` effect. It will filter actions *after* the facet filter has already been applied. The presence of this parameter is necessary, even if you just use `'*'` to take all actions, as will be explained further.
+
+The third parameter is a generator function which should contain your saga logic. This function will be passed a parameter, `channel`. `channel` is the source and sink for all facet-related actions.
+
+At this point, an example may be most helpful:
+
+```javascript
+const handleListSaga = function*(channel) {
+  function* handleEvents(action) {
+    const response = yield call(api.fetch, action.payload.details);
+    // actions must be put back to the channel to retain facet metadata
+    yield put(channel, listActions.listComplete(response));
+  }
+
+  // use any 'take' based effect with the channel
+  yield takeLatest(channel, handleEvents);
+};
+
+facetSaga(
+  'users',
+  'LIST_USERS_REQUEST',
+  handleListSaga,
+);
+```
+
+`'users'` is the facet name which the saga will be filtered on--only actions with the facet name `'users'` will be taken from the channel.
+
+The `'LIST_USERS_REQUEST'` pattern further narrows the collection of actions this saga will trigger from. This is necessary since `take`-based effects currently do not support using both a `channel` and a `pattern` at the same time.
+
+Finally, a saga is supplied which will receive the `channel` as a parameter. `channel` has been configured to emit actions which match the filter parameters, and calling `put` with `channel` will automatically tag outgoing actions with the facet name.
+
+Note that the saga in this example is generalizeable. Since the outgoing action will be tagged with the facet name, it will also be processed exclusively by the reducer associated with that facet, and therefore the results of the operation will only be stored in the state associated with the facet.
+
+### `getFacet(action: Object)`
+
+Returns the facet name which this action has been tagged with.
+
+### `hasFacet(facetName: String) => (action) => true|false`
+
+A 'thunk' which creates a function which takes an action and returns whether or not the action has the specified facet name. Usage: `hasFacet('users')(someAction)`
+
+### `withFacet(facetName: String) => (action) => taggedAction`
+
+A 'thunk' which creates a function which will tag an action with the specified facet name. General usage will probably be to wrap an action creator. For example: `withFacet('users')(createSomeAction(foo, bar))`
