@@ -1,5 +1,5 @@
 import _ from 'lodash';
-import hasFacet from '../helpers/hasFacet';
+import hasFacet from './helpers/hasFacet';
 
 export default (facetName, reducer, defaultState) => {
   const inferredDefaultState =
