@@ -8,5 +8,8 @@ export { default as withFacet } from './helpers/withFacet';
 export {
   default as combineFacetReducers,
 } from './mutable/combineFacetReducers';
+export {
+  default as createStructuredFacetSelector,
+} from './createStructuredFacetSelector';
 
 export { default } from './mutable/facet';

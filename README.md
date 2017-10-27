@@ -8,7 +8,8 @@ In Redux, all actions share the same channel. Creating reusable action creators 
 
 ```javascript
 import facet, {
-  combineFacetReducers
+  combineFacetReducers,
+  createStructuredFacetSelector,
 } from '@bandwidth/redux-facet';
 import { createStore, combineReducers } from 'redux';
 import { Provider } from 'react-redux';
@@ -68,17 +69,23 @@ const PostsView = ({ alerts, createAlert }) => (
 );
 
 /**
+ * Selectors designed for use with facets
+ */
+const selectList = facetName => state => state[facetName].list;
+const selectAlerts = facetName => state => state[facetName].alerts;
+
+/**
  * Using named facet containers instead of default react-redux containers
  */
 const UsersContainer = facet(
   'users',
-  (state) => ({ users: state.list, alerts: state.alerts }),
+  createStructuredFacetSelector({ users: selectList, alerts: selectAlerts }),
   (dispatch) => ({ createAlert: (message) => dispatch(alertsActions.create(message)) }),
 )(UsersView);
 
 const PostsContainer = facet(
   'posts',
-  (state) => ({ alerts: state.alerts }),
+  createStructuredFacetSelector({ alerts: selectAlerts }),
   (dispatch) => ({ createAlert: (message) => dispatch(alertsActions.create(message)) }),
 )(PostsView);
 
@@ -95,7 +102,7 @@ ReactDom.render(
 );
 ```
 
-In the example above, both the `users` and `posts` facets of the application can reuse the same action creators, reducers, and components to manage their alert systems, but the alerts they create will never cross the boundaries between them. `redux-facet` ensures the actions reach the correct reducer, and the state is separated out before reaching the container.
+In the example above, both the `users` and `posts` facets of the application can reuse the same action creators, reducers, and components to manage their alert systems, but the alerts they create will never cross the boundaries between them. `redux-facet` ensures the actions reach the correct reducer, and the state is separated out in the selectors by facet name before reaching the view.
 
 ## Immutable.js Support
 
@@ -105,10 +112,7 @@ To use `redux-facet` with `immutable`, import all modules from `@bandwidth/redux
 
 ### `facet(facetName: String, baseMapStateToProps: Function, baseMapDispatchToProps: Function, baseMergeProps: Function, options: Object)`
 
-Think of `facet()` kind of like `connect()`. It's a wrapper around `connect` which ensures two things:
-
-1. All actions dispatched by the wrapped component will be tracked with your facet name.
-2. The state used to create props will be, by default, only the subsection of the state associated with your facet.
+Think of `facet()` kind of like `connect()`. It's a wrapper around `connect` which ensures that all actions dispatched by the wrapped component will be tracked with your facet name.
 
 For an action creator,
 
@@ -123,7 +127,7 @@ and a given Redux state,
 
 ```javascript
 {
-  users: {
+  usersList: {
     userId1: { name: 'Bob' },
     userId2: { name: 'Alice' },
   },
@@ -138,7 +142,7 @@ using `facet` as follows
 ```javascript
 facet(
   'usersList',
-  (state) => { users: state },
+  (state) => { usersList: state.usersList },
   (dispatch) => { getUser: (id) => dispatch(getUser(id)) },
 )(Component);
 ```
@@ -147,7 +151,7 @@ will pass the following props to the wrapped component:
 
 ```javascript
 {
-  users: {
+  usersList: {
     userId1: { name: 'Bob' },
     userId2: { name: 'Alice' },
   },
@@ -261,6 +265,50 @@ Note that the saga in this example is generalizeable. Since the outgoing action 
 ### `selectors`
 
 `redux-facet` exports a selector to select facet state from the store by name. You can access it by calling `selectors.selectFacetState(facetName)`. Calling the returned function with your store will return the state of that facet.
+
+### `createStructuredFacetSelector(facetSelectorCreators: Object, normalSelectors?: Object)`
+
+Similar to `createStructuredSelector` of `reselect`, but instead of selectors, it expects to be passed a map of "facet selector creators". A facet selector creator is a function which takes `facetName` as a parameter and returns a selector, like so:
+
+```javascript
+const fooSelectorCreator = facetName => createSelector(
+  selectFacetState(facetName),
+  state => state.get('foo'),
+);
+```
+
+Such a function creates a selector which returns state based on the facet name supplied.
+
+If you need to supply more parameters to your selector creator, you can take it one level deeper by creating a selector creator creator:
+
+```javascript
+const filteredFooSelectorCreator = filterFunction => facetName => createSelector(
+  selectFacetState(facetName),
+  state => state.get('foo').filter(filterFunction),
+);
+```
+
+Once you have facet selector creators, supply them to `createStructuredFacetSelector`:
+
+```javascript
+const mapStateToProps = createStructuredFacetSelector({
+  fooSelectorCreator,
+  filteredFooSelectorCreator(foo => foo.isEnabled),
+});
+```
+
+`createStructuredFacetSelector` will automatically call all selector creator functions you supply with the facet name.
+
+You can use the second parameter of `createStructuredFacetSelector` to provide a map of typical selectors, just like you would to `createStructuredSelector`.
+
+```javascript
+const mapStateToProps = createStructuredFacetSelector({
+  fooSelectorCreator,
+  filteredFooSelectorCreator(foo => foo.isEnabled),
+}, {
+  normalState: normalSelectorCreator(someArgument),
+});
+```
 
 ### `getFacet(action: Object)`
 

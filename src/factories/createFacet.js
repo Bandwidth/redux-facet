@@ -13,7 +13,7 @@ import { connect as defaultConnect } from 'react-redux';
  * Note: alerts will not automatically be rendered into your component. You must reference the
  * provided `alerts` prop and choose a logical place to render them yourself.
  */
-export default (selectors) => (
+export default selectors => (
   facetName,
   baseMapStateToProps,
   baseMapDispatchToProps,
@@ -22,25 +22,25 @@ export default (selectors) => (
     connect: defaultConnect,
   },
 ) => {
-  // intercepts mapStateToProps and substitutes the facet state. This allows
-  // generalized selectors to work across facets without configuration.
-  // The global state is passed as a third property.
   const mapStateToProps = (state, ownProps) => ({
     ...baseMapStateToProps(
-      selectors.selectFacetState(facetName)(state),
-      ownProps,
-      state
+      state,
+      { ...ownProps, facetName },
+      // facetName supplied as a third parameter to mapStateToProps
+      facetName,
     ),
-    // facetName will also be supplied
+    // facetName will also be supplied as a prop to the component
     facetName,
   });
 
   // intercepts calls to dispatch, attaching metadata to outgoing actions
   // to indicate which facet they were sent from
   const mapDispatchToPropsInjectingFacetName = (dispatch, ownProps) => {
-    const facetDispatch = (action) => dispatch(withFacet(facetName)(action));
+    const facetDispatch = action => dispatch(withFacet(facetName)(action));
     return {
-      ...(baseMapDispatchToProps ? baseMapDispatchToProps(facetDispatch, ownProps, dispatch) : {}),
+      ...(baseMapDispatchToProps
+        ? baseMapDispatchToProps(facetDispatch, ownProps, dispatch)
+        : {}),
       facetDispatch,
     };
   };
@@ -50,9 +50,13 @@ export default (selectors) => (
     mapDispatchToPropsInjectingFacetName,
     baseMergeProps,
     // pass through connect options from HOC options
-    _.pick(
-      options,
-      ['pure', 'areStatesEqual', 'areOwnPropsEqual', 'areStatePropsEqual', 'areMergedPropsEqual', 'storeKey'],
-    ),
+    _.pick(options, [
+      'pure',
+      'areStatesEqual',
+      'areOwnPropsEqual',
+      'areStatePropsEqual',
+      'areMergedPropsEqual',
+      'storeKey',
+    ]),
   );
 };
