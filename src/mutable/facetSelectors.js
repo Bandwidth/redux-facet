@@ -1,5 +1,8 @@
-const selectFacetState = (facetName) => (state) => state[facetName] || {};
+import combineFacetReducers from './combineFacetReducers';
+
+const createFacetStateSelector = facetName => state =>
+  state[combineFacetReducers.key][facetName] || {};
 
 export default {
-  selectFacetState,
+  createFacetStateSelector,
 };

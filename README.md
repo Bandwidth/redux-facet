@@ -23,15 +23,18 @@ import alertsActions from 'actions/common/alerts';
 /**
  * Creating the root reducer
  */
-const reducer = combineFacetReducers({
-  users: combineReducers({
-    alerts: alertsReducer,
-    list: userListReducer,
-  }),
-  posts: combineReducers({
-    alerts: alertsReducer,
-  }),
-  /* ... */
+const reducer = combineReducers({
+  [combineFacetReducers.key]: combineFacetReducers({
+    users: combineReducers({
+      alerts: alertsReducer,
+      list: userListReducer,
+    }),
+    posts: combineReducers({
+      alerts: alertsReducer,
+    }),
+    /* ... other facet reducers */
+  });
+  /* ... other reducers */
 });
 
 /**
@@ -197,31 +200,37 @@ const alertReducer = (state, action) => {
   }
 };
 
-// now the reducer can be reused for various different parts of the app
+// now the alert reducer can be reused for various different parts of the app
 const rootReducer = combineReducers({
-  users: facetReducer('users', combineReducers({
-    alerts: alertReducer,
-  })),
-  posts: facetReducer('posts', combineReducers({
-    posts: alertReducer,
-  })),
+  facets: combineReducers({
+    users: facetReducer('users', combineReducers({
+      alerts: alertReducer,
+    })),
+    posts: facetReducer('posts', combineReducers({
+      posts: alertReducer,
+    })),
+  }),
 });
 ```
 
 Unlike if `alertReducer` had been simply mounted as-is, the `posts` will only process `"ADD_ALERT"` events which are related to the `posts` facet. Same with `users`.
 
-#### One Rule: Mount a facet reducer by its name
+#### One Rule: Mount a facet reducer at `facets.<facetName>`
 
-Presently, `redux-facet` expects a reducer which controls the state of a facet to be mounted at the facet's name. For instance, in the `rootReducer` above, `users` and `posts` are mounted correctly. `combineFacetReducers` was designed to make this more idiomatic.
+Presently, `redux-facet` expects a reducer which controls the state of a facet to be mounted at the facet's name within a part of the state called `facets`. For instance, in the `rootReducer` above, `users` and `posts` are mounted correctly. `combineFacetReducers` was designed to make this more idiomatic.
 
 ### combineFacetReducers(reducerMap: Object)
 
 `combineFacetReducers` is the analogue of `combineReducers`. It has the same usage as the default Redux tool. Simply supply it with a map of reducers, where the key for each reducer is the name of the reducer's facet. `combineFacetReducers` will automatically apply `facetReducer` to your reducers utilizing the key and combine them into one function.
 
+Mount the result of `combineFacetReducers` at the key provided as a property of the function as shown below. This ensures that even if `redux-facet` changes the place it expects this reducer to be mounted, your code won't need updating. Presently, the value of the key is simply `'facets'`.
+
 ```javascript
-const rootReducer = combineFacetReducers({
-  users: userReducer,
-  posts: postReducer,
+const rootReducer = combineReducers({
+  [combineFacetReducers.key]: combineFacetReducers({
+    users: userReducer,
+    posts: postReducer,
+  });
 });
 ```
 
@@ -264,7 +273,7 @@ Note that the saga in this example is generalizeable. Since the outgoing action 
 
 ### `selectors`
 
-`redux-facet` exports a selector to select facet state from the store by name. You can access it by calling `selectors.selectFacetState(facetName)`. Calling the returned function with your store will return the state of that facet.
+`redux-facet` exports a selector creator to select facet state from the store by name. You can access it by calling `selectors.createFacetStateSelector(facetName)`. Calling the returned function with your store will return the state of that facet.
 
 ### `createStructuredFacetSelector(facetSelectorCreators: Object, normalSelectors?: Object)`
 
@@ -272,7 +281,7 @@ Similar to `createStructuredSelector` of `reselect`, but instead of selectors, i
 
 ```javascript
 const fooSelectorCreator = facetName => createSelector(
-  selectFacetState(facetName),
+  createFacetStateSelector(facetName),
   state => state.get('foo'),
 );
 ```
@@ -283,7 +292,7 @@ If you need to supply more parameters to your selector creator, you can take it 
 
 ```javascript
 const filteredFooSelectorCreator = filterFunction => facetName => createSelector(
-  selectFacetState(facetName),
+  createFacetStateSelector(facetName),
   state => state.get('foo').filter(filterFunction),
 );
 ```
