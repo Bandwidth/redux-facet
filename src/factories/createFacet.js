@@ -15,20 +15,22 @@ import { connect as defaultConnect } from 'react-redux';
  */
 export default selectors => (
   facetName,
-  baseMapStateToProps = () => ({}),
-  baseMapDispatchToProps = () => ({}),
+  baseMapStateToProps,
+  baseMapDispatchToProps,
   baseMergeProps,
   options = {
     connect: defaultConnect,
   },
 ) => {
   const mapStateToProps = (state, ownProps) => ({
-    ...baseMapStateToProps(
-      state,
-      { ...ownProps, facetName },
-      // facetName supplied as a third parameter to mapStateToProps
-      facetName,
-    ),
+    ...(baseMapStateToProps
+      ? baseMapStateToProps(
+          state,
+          { ...ownProps, facetName },
+          // facetName supplied as a third parameter to mapStateToProps
+          facetName,
+        )
+      : {}),
     // facetName will also be supplied as a prop to the component
     facetName,
   });
