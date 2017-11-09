@@ -15,8 +15,8 @@ import { connect as defaultConnect } from 'react-redux';
  */
 export default selectors => (
   facetName,
-  baseMapStateToProps,
-  baseMapDispatchToProps,
+  baseMapStateToProps = () => ({}),
+  baseMapDispatchToProps = () => ({}),
   baseMergeProps,
   options = {
     connect: defaultConnect,
