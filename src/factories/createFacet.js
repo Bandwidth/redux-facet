@@ -18,10 +18,12 @@ export default selectors => (
   baseMapStateToProps,
   baseMapDispatchToProps,
   baseMergeProps,
-  options = {
-    connect: defaultConnect,
-  },
+  options,
 ) => {
+  const resolvedOptions = _.defaultsDeep(options, {
+    connect: defaultConnect,
+  });
+
   const mapStateToProps = (state, ownProps) => ({
     ...(baseMapStateToProps
       ? baseMapStateToProps(
@@ -47,12 +49,12 @@ export default selectors => (
     };
   };
 
-  return options.connect(
+  return resolvedOptions.connect(
     mapStateToProps,
     mapDispatchToPropsInjectingFacetName,
     baseMergeProps,
     // pass through connect options from HOC options
-    _.pick(options, [
+    _.pick(resolvedOptions, [
       'pure',
       'areStatesEqual',
       'areOwnPropsEqual',
