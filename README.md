@@ -236,40 +236,35 @@ const rootReducer = combineReducers({
 
 ### facetSaga(facetName: String, pattern: String|Function, saga: Function)
 
-For those who use `redux-saga`, this library also provides a wrapper for sagas which will filter `take` and `put` effects to only draw from actions tagged with the supplied facet name. The API for `facetSaga` is a bit more advanced than `facetReducer`.
+For those who use `redux-saga`, this library also provides a wrapper for sagas which will ensure all actions which are dispatched by the saga will mirror the facet of the action which triggers it.
 
-The second parameter, `pattern`, is passed on to `redux-saga`'s `take` effect. It will filter actions *after* the facet filter has already been applied. The presence of this parameter is necessary, even if you just use `'*'` to take all actions, as will be explained further.
+This helps fulfill the goal of `redux-facet`: to transparently track actions as they move through your application.
 
-The third parameter is a generator function which should contain your saga logic. This function will be passed a parameter, `channel`. `channel` is the source and sink for all facet-related actions.
+In combination with generic facet behaviors, this becomes a powerful tool for writing reusable code.
 
-At this point, an example may be most helpful:
+For example, we can write a generic list request handler saga which can also dispatch error messages to the facet which originally requested the list:
 
 ```javascript
-const handleListSaga = function*(channel) {
-  function* handleEvents(action) {
+const handleListSaga = function*(action) {
+  try {
     const response = yield call(api.fetch, action.payload.details);
-    // actions must be put back to the channel to retain facet metadata
-    yield put(channel, listActions.listComplete(response));
+    yield put(listActions.listComplete(response));
+  } catch (err) {
+    // this outgoing action will be tagged with the initiating facet,
+    // so we can correlate the alert message with the correct part of the UI
+    // when we render... all without writing any specific logic.
+    yield put(alertActions.create(err.message));
   }
-
-  // use any 'take' based effect with the channel
-  yield takeLatest(channel, handleEvents);
 };
 
-facetSaga(
-  'users',
-  'LIST_USERS_REQUEST',
-  handleListSaga,
-);
+const watchList = function*() {
+  yield takeEvery('LIST_REQUESTED', facetSaga(handleListSaga));
+};
 ```
 
-`'users'` is the facet name which the saga will be filtered on--only actions with the facet name `'users'` will be taken from the channel.
+Taking this example, let's suppose that two different pages in our application dispatch a `LIST_REQUESTED` action. If the request fails on `pageA`, an error alert action will be dispatched which is tagged with `pageA` as the facet metadata. We can then choose to only render that alert on `pageA`. This pattern helps keep our alert messaging tied closely to the actual point of user interaction and avoids littering our page with global alerts or multiple alerts.
 
-The `'LIST_USERS_REQUEST'` pattern further narrows the collection of actions this saga will trigger from. This is necessary since `take`-based effects currently do not support using both a `channel` and a `pattern` at the same time.
-
-Finally, a saga is supplied which will receive the `channel` as a parameter. `channel` has been configured to emit actions which match the filter parameters, and calling `put` with `channel` will automatically tag outgoing actions with the facet name.
-
-Note that the saga in this example is generalizeable. Since the outgoing action will be tagged with the facet name, it will also be processed exclusively by the reducer associated with that facet, and therefore the results of the operation will only be stored in the state associated with the facet.
+For more information on alerts specifically, be sure to check out [redux-facet-alerts](https://github.com/Bandwidth/redux-facet-alerts). Of course, this pattern can be applied to any generalized behavior you want to repeat in your application.
 
 ### `selectors`
 

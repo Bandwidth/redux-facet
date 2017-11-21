@@ -23,16 +23,34 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
-            presets: ['es2017', 'react', 'stage-0'],
+            presets: [
+              [
+                'env',
+                {
+                  targets: {
+                    browsers: ['last 2 versions'],
+                  },
+                },
+              ],
+              'react',
+            ],
+            plugins: [
+              'transform-object-rest-spread',
+              'transform-class-properties',
+              [
+                'transform-runtime',
+                {
+                  polyfill: false,
+                  regenerator: true,
+                },
+              ],
+            ],
           },
         },
       },
       {
         test: /\.css$/,
-        use: [
-          'style-loader',
-          'css-loader',
-        ],
+        use: ['style-loader', 'css-loader'],
       },
       {
         test: /\.(jpg|jpeg|png|webp|ico)$/,
