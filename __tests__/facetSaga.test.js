@@ -45,4 +45,25 @@ describe('facetSaga wrapper', () => {
     );
     expect(iterator.next().done).toBe(true);
   });
+
+  test('handles error control flow', () => {
+    const error = new Error('foo');
+    const throwFunction = () => null;
+
+    function* advancedSaga(action) {
+      try {
+        const data = yield call(throwFunction);
+        yield put(outgoingAction('wrong'));
+      } catch (err) {
+        yield put(outgoingAction('right'));
+      }
+    }
+
+    const iterator = facetSaga(advancedSaga)(addFacet(incomingAction()));
+    expect(iterator.next().value).toEqual(call(throwFunction));
+    expect(iterator.throw(error).value).toEqual(
+      put(addFacet(outgoingAction('right'))),
+    );
+    expect(iterator.next().done).toBe(true);
+  });
 });

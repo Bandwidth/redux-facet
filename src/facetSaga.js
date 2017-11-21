@@ -15,21 +15,29 @@ export default function facetSaga(saga) {
     let lastResult;
 
     while (true) {
-      const next = iterator.next(lastResult);
+      const next =
+        lastResult instanceof Error
+          ? iterator.throw(lastResult)
+          : iterator.next(lastResult);
+
       if (next.done) {
         return;
       }
 
-      if (next.value.PUT) {
-        lastResult = yield {
-          ...next.value,
-          PUT: {
-            ...next.value.PUT,
-            action: withFacet(facetName)(next.value.PUT.action),
-          },
-        };
-      } else {
-        lastResult = yield next.value;
+      try {
+        if (next.value.PUT) {
+          lastResult = yield {
+            ...next.value,
+            PUT: {
+              ...next.value.PUT,
+              action: withFacet(facetName)(next.value.PUT.action),
+            },
+          };
+        } else {
+          lastResult = yield next.value;
+        }
+      } catch (err) {
+        lastResult = err;
       }
     }
   };
