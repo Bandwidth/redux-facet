@@ -257,7 +257,7 @@ For more information on alerts specifically, be sure to check out [redux-facet-a
 
 ### `selectors`
 
-`redux-facet` exports a selector creator to select facet state from the store by name. You can access it by calling `selectors.createFacetStateSelector(facetName)`. Calling the returned function with your store will return the state of that facet.
+`redux-facet` exports a selector creator to select facet state from the store by name. You can access it by calling `selectors.createFacetStateSelector(facetName)`. Calling the returned function with your store will return the state of that facet in plain JS, even if immutables are used.
 
 ### `createStructuredFacetSelector(facetSelectorCreators: Object, normalSelectors?: Object)`
 

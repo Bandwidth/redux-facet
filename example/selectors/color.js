@@ -1,3 +1,3 @@
 export default {
-  selectColor: state => state.get('color'),
+  selectColor: state => state.color,
 };
