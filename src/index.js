@@ -11,5 +11,7 @@ export {
 export {
   default as createStructuredFacetSelector,
 } from './createStructuredFacetSelector';
+export { default as compose } from './compose';
+export { default as withFacetData } from './mutable/withFacetData';
 
-export { default } from './mutable/facet';
+export { default } from './facet';

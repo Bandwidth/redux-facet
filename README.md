@@ -113,9 +113,9 @@ To use `redux-facet` with `immutable`, import all modules from `@bandwidth/redux
 
 ## Documentation
 
-### `facet(facetName: String, baseMapStateToProps: Function, baseMapDispatchToProps: Function, baseMergeProps: Function, options: Object)`
+### `facet(facetName: String, mapFacetDispatchToProps: Function, options: Object)`
 
-Think of `facet()` kind of like `connect()`. It's a wrapper around `connect` which ensures that all actions dispatched by the wrapped component will be tracked with your facet name.
+Think of `facet()` kind of like `connect()`, but only for actions. It's a wrapper around `connectAdvanced` which ensures that all actions dispatched by the wrapped component will be tracked with your facet name.
 
 For an action creator,
 
@@ -126,43 +126,16 @@ const getUser = (id) => ({
 });
 ```
 
-and a given Redux state,
-
-```javascript
-{
-  usersList: {
-    userId1: { name: 'Bob' },
-    userId2: { name: 'Alice' },
-  },
-  posts: {
-    postId1: { content: 'Hello world' },
-  },
-}
-```
-
 using `facet` as follows
 
 ```javascript
 facet(
   'usersList',
-  (state) => { usersList: state.usersList },
   (dispatch) => { getUser: (id) => dispatch(getUser(id)) },
 )(Component);
 ```
 
-will pass the following props to the wrapped component:
-
-```javascript
-{
-  usersList: {
-    userId1: { name: 'Bob' },
-    userId2: { name: 'Alice' },
-  },
-  getUser: [Function],
-}
-```
-
-And when component calls `getUser(id)`, the resulting action will look like this:
+when the component calls `getUser(id)`, the resulting action will look like this:
 
 ```javascript
 {
@@ -172,9 +145,17 @@ And when component calls `getUser(id)`, the resulting action will look like this
 }
 ```
 
-That's all the unique functionality of `facet()`; the rest is handled by an internal call to `connect` from `react-redux`. If you want to provide options to `connect`, you can pass them in the fourth parameter. Likewise, `mergeProps` is available as the third parameter.
+That's all that `facet()` does!
 
 Though simple, `facet()` allows action creators to be written once and reused anywhere without creating ambiguity of which portion of the app generated the action. When coupled with `facetReducer`, this allows actions to be tracked and associated with specific sections of the Redux state.
+
+### withFacetData(facetName: String, mapFacetStateToProps: Function)
+
+The other half of a `connect` container, this higher-order-component lets you retrieve data from a facet's sub-state in your redux store.
+
+`mapFacetStateToProps` will be called with the parameters `(facetState, ownProps, state)`, where `facetState` is the sub-state located at `facets[facetName]`, and `state` is the unfiltered original state.
+
+The advantage of using `withFacetData` over `connect` for selecting facet data is that you can write generic selectors which are portable between different named facets.
 
 ### facetReducer(facetName: String, reducer: Function)
 
