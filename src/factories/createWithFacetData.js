@@ -1,28 +1,30 @@
-import { defaultsDeep, pick } from 'lodash';
+import { defaultsDeep, pick, isFunction } from 'lodash';
 import withFacet from '../helpers/withFacet';
-import { connectAdvanced as defaultConnect } from 'react-redux';
+import { connectAdvanced } from 'react-redux';
 
-export default selectors => (facetName, mapFacetStateToProps, options) => {
-  const resolvedOptions = defaultsDeep(options, {
-    connect: defaultConnect,
-  });
+export default selectors => (facetName, mapFacetStateToProps) => {
+  const resolvedFacetName = isFunction(facetName) ? 'prop-provided' : facetName;
+  const resolvedMapStateToProps = isFunction(facetName)
+    ? facetName
+    : mapFacetStateToProps;
 
   const selectorFactory = (dispatch, factoryOptions) => {
     return (state, ownProps) => {
-      const facetState = selectors.createFacetStateSelector(facetName)(state);
-      console.log(`facet ${facetName} state ${JSON.stringify(facetState)}`);
+      const facetState = selectors.createFacetStateSelector(
+        ownProps.facetName || resolvedFacetName,
+      )(state);
       return {
         ...ownProps,
-        ...(mapFacetStateToProps
-          ? mapFacetStateToProps(facetState, ownProps, state)
+        ...(resolvedMapStateToProps
+          ? resolvedMapStateToProps(facetState, ownProps, state)
           : {}),
       };
     };
   };
 
-  return resolvedOptions.connect(selectorFactory, {
+  return connectAdvanced(selectorFactory, {
     methodName: 'withFacetData',
     shouldHandleStateChanges: true,
-    getDisplayName: () => `WithFacetData[${facetName}]`,
+    getDisplayName: name => `WithFacetData[${resolvedFacetName}](${name})`,
   });
 };

@@ -4,23 +4,18 @@ import ReactDom from 'react-dom';
 import { Provider } from 'react-redux';
 import configureStore from './configureStore';
 
-import BlockA from './containers/BlockA';
-import BlockB from './containers/BlockB';
-import BlockC from './containers/BlockC';
-import BlockD from './containers/BlockD';
+import Block from './containers/Block';
 
 const store = configureStore();
 
 ReactDom.render(
-  (
-    <Provider store={store}>
-      <div style={{ display: 'flex', flexDirection: 'row' }}>
-        <BlockA />
-        <BlockB />
-        <BlockC />
-        <BlockD />
-      </div>
-    </Provider>
-  ),
+  <Provider store={store}>
+    <div style={{ display: 'flex', flexDirection: 'row' }}>
+      <Block facetName="blockA" />
+      <Block facetName="blockB" />
+      <Block facetName="blockC" />
+      <Block facetName="blockD" />
+    </div>
+  </Provider>,
   document.getElementById('main'),
 );

@@ -113,7 +113,7 @@ To use `redux-facet` with `immutable`, import all modules from `@bandwidth/redux
 
 ## Documentation
 
-### `facet(facetName: String, mapFacetDispatchToProps: Function, options: Object)`
+### `facet(facetName: String?, mapFacetDispatchToProps: Function)`
 
 Think of `facet()` kind of like `connect()`, but only for actions. It's a wrapper around `connectAdvanced` which ensures that all actions dispatched by the wrapped component will be tracked with your facet name.
 
@@ -147,13 +147,21 @@ when the component calls `getUser(id)`, the resulting action will look like this
 
 That's all that `facet()` does!
 
+#### Parameters
+
+`facet` takes two parameters. The first is `facetName`, which is optional. This lets you specify the name of the facet this container is attached to at the container level. If it's omitted, you *must* provide the `facetName` prop to the container.
+
+The second parameter is `mapFacetDispatchToProps`, a function which, as previously mentioned, is very similar to `mapDispatchToProps` in `connect`. If you omit `facetName`, you can pass this as the first and only parameter.
+
 Though simple, `facet()` allows action creators to be written once and reused anywhere without creating ambiguity of which portion of the app generated the action. When coupled with `facetReducer`, this allows actions to be tracked and associated with specific sections of the Redux state.
 
-### withFacetData(facetName: String, mapFacetStateToProps: Function)
+### withFacetData(facetName: String?, mapFacetStateToProps: Function)
 
 The other half of a `connect` container, this higher-order-component lets you retrieve data from a facet's sub-state in your redux store.
 
 `mapFacetStateToProps` will be called with the parameters `(facetState, ownProps, state)`, where `facetState` is the sub-state located at `facets[facetName]`, and `state` is the unfiltered original state.
+
+Similar to `facet`, you can omit `facetName` and provide it as a prop instead, which would make the only parameter `mapFacetStateToProps`.
 
 The advantage of using `withFacetData` over `connect` for selecting facet data is that you can write generic selectors which are portable between different named facets.
 

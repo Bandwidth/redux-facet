@@ -6,17 +6,15 @@ import colorActions from '../actions/color';
 import colorSelectors from '../selectors/color';
 import ColorBlock from '../components/ColorBlock';
 
-export default facetName => {
-  const mapStateToProps = createStructuredSelector({
-    color: colorSelectors.selectColor,
-  });
+const mapStateToProps = createStructuredSelector({
+  color: colorSelectors.selectColor,
+});
 
-  const mapDispatchToProps = dispatch => ({
-    generateColor: delay => dispatch(colorActions.generateColor.pending(delay)),
-  });
+const mapDispatchToProps = dispatch => ({
+  generateColor: delay => dispatch(colorActions.generateColor.pending(delay)),
+});
 
-  return compose(
-    facet(facetName, mapDispatchToProps),
-    withFacetData(facetName, mapStateToProps),
-  )(ColorBlock);
-};
+export default compose(
+  facet(mapDispatchToProps),
+  withFacetData(mapStateToProps),
+)(ColorBlock);
