@@ -1,5 +1,7 @@
 # redux-facet
 
+[Getting started & Examples](http://dev.bandwidth.com/redux-facet-website)
+
 ## Purpose
 
 In Redux, all actions share the same channel. Creating reusable action creators and reducer behaviors is hard, because you need a method with which to associate different results of those actions with different parts of the application. Without a plan to address this, actions and reducers are often duplicated: `createGlobalAlert`, `createUsersAlert`, `createPostsAlert`, etc...
