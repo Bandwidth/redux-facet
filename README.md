@@ -223,7 +223,7 @@ const rootReducer = combineReducers({
 });
 ```
 
-### facetSaga(facetName: String, pattern: String|Function, saga: Function)
+### facetSaga(saga: Function)
 
 For those who use `redux-saga`, this library also provides a wrapper for sagas which will ensure all actions which are dispatched by the saga will mirror the facet of the action which triggers it.
 
