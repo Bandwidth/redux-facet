@@ -10,6 +10,8 @@ In Redux, all actions share the same channel. Creating reusable action creators 
 
 To learn how to integrate redux-facet in your app, see the [getting started guide](http://dev.bandwidth.com/redux-facet-website/#/use).
 
+For more specific integration patterns and ideas, see the [wiki](https://github.com/Bandwidth/redux-facet/wiki).
+
 ## Immutable.js Support
 
 To use `redux-facet` with `immutable`, import all modules from `@bandwidth/redux-facet/immutable`. Module names and usages stay the same.
